@@ -21,6 +21,7 @@ const Signals = imports.signals;
 const Clutter = imports.gi.Clutter;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
+const GnomeDesktop = imports.gi.GnomeDesktop;
 const Meta = imports.gi.Meta;
 const St = imports.gi.St;
 const UPowerGlib = imports.gi.UPowerGlib;
@@ -59,7 +60,7 @@ const DEFAULT_SOUND_FILE = 'bell.wav';
 const SCREENSAVER_DEACTIVATE_COMMAND = 'xdg-screensaver reset';
 
 // Remind about ongoing break in given delays
-const PAUSE_REMIND_TIMES = [60, 120, 240, 480];
+const PAUSE_REMIND_TIMES = [60];
 // Ratio between user idle time and time between reminders to determine if user
 // is finally away
 const PAUSE_REMINDER_ACCEPTANCE = 0.8
@@ -86,7 +87,6 @@ const PomodoroTimer = new Lang.Class({
         this._timeoutSource = 0;
         this._eventCaptureId = 0;
         this._eventCaptureSource = 0;
-        this._eventCapturePointer = null;
         this._reminderSource = 0;
         this._reminderTime = 0;
         this._reminderCount = 0;
@@ -98,7 +98,8 @@ const PomodoroTimer = new Lang.Class({
         this._power = null;
         this._presence = null;
         this._presenceChangeEnabled = false;
-        this._screenShield = null;
+        this._idleMonitor = new GnomeDesktop.IdleMonitor();
+        this._becameActiveId = 0;
         
         this._settings = PomodoroUtil.getSettings();
         this._settings.connect('changed', Lang.bind(this, this._onSettingsChanged));
@@ -188,12 +189,11 @@ const PomodoroTimer = new Lang.Class({
             if (this._timeoutSource == 0) {
                 this._timeoutSource = Mainloop.timeout_add_seconds(1, Lang.bind(this, this._onTimeout));
             }
+            if (this._state == newState) {
+                return;
+            }
         }
-        
-        if (this._state == newState) {
-            return;
-        }
-        
+
         if (this._state == State.POMODORO) {
             if (this._elapsed >= POMODORO_ACCEPTANCE * this._settings.get_int('pomodoro-time')) {
                 this._sessionCount += 1;
@@ -302,9 +302,14 @@ const PomodoroTimer = new Lang.Class({
                     else
                         break;
             }
-            
-            if (this._state == State.PAUSE)
+
+            if (this._state == State.PAUSE) {
                 this._notifyPomodoroEnd();
+                if (this._notificationDialog) {
+                    this._notificationDialog.open();
+                    this._notificationDialog.pushModal();
+                }
+            }
         }
         
         this._updatePresenceStatus();
@@ -361,37 +366,6 @@ const PomodoroTimer = new Lang.Class({
                 break;
         }
         
-        return true;
-    },
-
-    _onEventCapture: function(actor, event) {
-        // When notification dialog fades out, can trigger an event.
-        // To avoid that we need to capture just these event types:
-        switch(event.type()) {
-            case Clutter.EventType.KEY_PRESS:
-            case Clutter.EventType.BUTTON_PRESS:
-            case Clutter.EventType.MOTION:
-            case Clutter.EventType.SCROLL:
-                this.setState(State.POMODORO);
-                break;
-        }
-        return false;
-    },
-
-    _onX11EventCapture: function() {
-        let display = global.screen.get_display();
-        let pointer = global.get_pointer();
-        let idleTime = parseInt((display.get_current_time_roundtrip() - display.get_last_user_time()) / 1000);
-        
-        if (idleTime < 1 || (this._eventCapturePointer && (
-            pointer[0] != this._eventCapturePointer[0] || pointer[1] != this._eventCapturePointer[1]))) {
-            this.setState(State.POMODORO);
-            
-            // Treat last non-idle second as if timer was running.
-            this._onTimeout();
-            return false;
-        }
-        this._eventCapturePointer = pointer;
         return true;
     },
 
@@ -452,7 +426,9 @@ const PomodoroTimer = new Lang.Class({
                                                           _("Take a break!"),
                                                           null);
         this._notification.setResident(true);
-        this._notification.addButton(1, _("Start a new pomodoro"));
+
+        //button had to be disabled due a bug in gnome-shell
+        //this._notification.addButton(1, _("Start a new pomodoro"));
 
         // Force to show description along with title,
         // as this is private property, API might change
@@ -546,8 +522,7 @@ const PomodoroTimer = new Lang.Class({
     },
 
     _onReminderTimeout: function() {
-        let display = global.screen.get_display();
-        let idleTime = parseInt((display.get_current_time_roundtrip() - display.get_last_user_time()) / 1000);
+        let idleTime = this._idleMonitor.get_idletime();
         
         // No need to notify if user seems to be away. We only monitor idle time 
         // based on X11, and not Clutter scene which better reflects to real work
@@ -562,7 +537,7 @@ const PomodoroTimer = new Lang.Class({
     },
 
     _onScreenShieldChanged: function() {
-        if (!this._screenShield.locked && this._state == State.PAUSE) {
+        if (!Main.screenShield.locked && this._state == State.PAUSE) {
             if (this._notificationDialog && this._settings.get_boolean('show-notification-dialogs')) {
                 this._notificationDialog.open();
                 this._notificationDialog.pushModal();
@@ -676,32 +651,25 @@ const PomodoroTimer = new Lang.Class({
         this._presenceChangeEnabled = enabled;
     },
 
+    _onIdleMonitorBecameActive: function(monitor) {
+        this.setState(State.POMODORO);
+    },
+
     _enableEventCapture: function() {
-        // We use meta_display_get_last_user_time() which determines any user interaction 
-        // with X11/Mutter windows but not with GNOME Shell UI, for that we handle 'captured-event'.
-        if (this._eventCaptureId == 0) {
-            this._eventCaptureId = global.stage.connect('captured-event', Lang.bind(this, this._onEventCapture));
-        }
-        if (this._eventCaptureSource == 0) {
-            this._eventCapturePointer = global.get_pointer();
-            this._eventCaptureSource = Mainloop.timeout_add_seconds(1, Lang.bind(this, this._onX11EventCapture));
-        }
+        if (this._becameActiveId == 0)
+            this._becameActiveId = this._idleMonitor.add_user_active_watch(Lang.bind(this, this._onIdleMonitorBecameActive));
     },
 
     _disableEventCapture: function() {
-        if (this._eventCaptureId != 0) {
-            global.stage.disconnect(this._eventCaptureId);
-            this._eventCaptureId = 0;
-        }
-        if (this._eventCaptureSource != 0) {
-            GLib.source_remove(this._eventCaptureSource);
-            this._eventCaptureSource = 0;
+        if (this._becameActiveId != 0) {
+            this._idleMonitor.remove_watch(this._becameActiveId);
+            this._becameActiveId = 0;
         }
     },
 
     _deactivateScreenSaver: function() {
-        if (this._screenShield && this._screenShield.locked)
-            this._screenShield.unlock();
+        if (Main.screenShield && Main.screenShield.locked)
+            Main.screenShield.unlock();
         
         try {
             Util.trySpawnCommandLine(SCREENSAVER_DEACTIVATE_COMMAND);
@@ -712,9 +680,8 @@ const PomodoroTimer = new Lang.Class({
     },
 
     _load: function() {
-        if (!this._screenShield) {
-            this._screenShield = new ScreenShield.ScreenShieldFallback();
-            this._screenShield.connect('lock-status-changed', Lang.bind(this, this._onScreenShieldChanged));
+        if (Main.screenShield) {
+            Main.screenShield.connect('lock-status-changed', Lang.bind(this, this._onScreenShieldChanged));
         }
         if (!this._power) {
             this._power = new UPowerGlib.Client();

@@ -31,7 +31,7 @@ https://extensions.gnome.org/extension/53/pomodoro/
 ## Archlinux
 Get from [AUR](http://aur.archlinux.org/packages.php?ID=49967)
 
-## Fedora 17 and Later
+## Fedora 17 and later
 Install using yum:
 
         $ su -c 'yum install gnome-shell-extension-pomodoro'
@@ -41,15 +41,16 @@ Available at [Maciej's](https://github.com/mgrela) overlay [here](https://github
 
 ## Direct from source
 1. Get zipball
-    * [for GNOME Shell 3.4](https://github.com/codito/gnome-shell-pomodoro/zipball/gnome-shell-3.4)
+    * [for GNOME Shell 3.8](https://github.com/codito/gnome-shell-pomodoro/zipball/gnome-shell-3.8)
     * [for GNOME Shell 3.6](https://github.com/codito/gnome-shell-pomodoro/zipball/gnome-shell-3.6)
+    * [for GNOME Shell 3.4](https://github.com/codito/gnome-shell-pomodoro/zipball/gnome-shell-3.4)
     * [Unstable – our master branch](https://github.com/codito/gnome-shell-pomodoro/zipball/master)
 
 2. Build it and install
 
         ./autogen.sh --prefix=/usr
         make zip
-        unzip _build/gnome-shell-pomodoro.0.7.zip -d ~/.local/share/gnome-shell/extensions/pomodoro@arun.codito.in
+        unzip _build/gnome-shell-pomodoro.0.8.zip -d ~/.local/share/gnome-shell/extensions/pomodoro@arun.codito.in
 
     To install it system-wide, you could do
 
@@ -71,7 +72,27 @@ Available at [Maciej's](https://github.com/mgrela) overlay [here](https://github
 - Use toggle switch (or *Ctrl+Alt+P*) to toggle timer on/off
 - You can configure behavior of the extension in *Options* menu
 
-For a list of configurable options, please refer [wiki](https://github.com/codito/gnome-shell-pomodoro/wiki/Configuration)
+...and there are a couple of options:
+- _Reset Counts and Timers_: Resets your pomodoro session count.
+- _Away From Desk_: Automatically start next pomodoro session after pause. Useful if you're sitting away from computer.
+- _Control Presence Status_: During a pomodoro session, mark your IM presence status to Busy.
+- _Fullscreen Notifications_: After completion of a pomodoro session, show a dialog box (system modal) that will force you to take a break :)
+- _Sound Notifications_: Notify completion of pomodoro by playing a sound.
+
+# Settings
+We recommend you use the Options menu to configure Pomodoro extension. If you still want to tinker with settings, you can use dconf-editor or gsettings via commandline. Settings for Pomodoro are in */org/gnome/shell/extensions/pomodoro* tree.
+
+**Change notification sound**
+
+You can customize notification sound with:
+
+        gsettings [--schemadir=~/.local/share/gnome-shell/extensions/pomodoro@arun.codito.in/schemas/] set org.gnome.shell.extensions.pomodoro sound-uri "file:///usr/share/sounds/freedesktop/stereo/complete.oga"
+
+**Change keyboard shortcut**
+
+Hotkey to toggle the timer *Ctrl+Alt+P* may be used in one of your apps (Emacs, Sublime Text, etc.), in which case it will toggle the timer. You can change the shortcut by:
+
+        gsettings [--schemadir=~/.local/share/gnome-shell/extensions/pomodoro@arun.codito.in/schemas/] set org.gnome.shell.extensions.pomodoro toggle-key "['<Super>p']"
 
 # License
 GPL3. See [COPYING](https://raw.github.com/codito/gnome-shell-pomodoro/master/COPYING) for details.
@@ -81,20 +102,27 @@ Thanks to our [GitHub contributors](https://github.com/codito/gnome-shell-pomodo
 
 # Changelog
 
+**Version 0.8**
+
++ Support for GNOME Shell 3.8 (thanks @haaja)
++ Brazilian Portuguese translation (thanks @aleborba)
++ Minor bug fixes
+
 **Version 0.7**
 
-+ Czech translation
 + Support for GNOME Shell 3.4 and 3.6
-+ Full screen notifications
-+ Added reminders
++ Feature: Full screen notifications
++ Feature: Reminders
++ Chinese translation (thanks @mengzhuo)
++ Czech translation (thanks @veverjak)
 
 **Version 0.6**
 
-+ New translation: Persian (thanks @arashm)
-+ Feature: Support for GNOME Shell 3.4
++ Support for GNOME Shell 3.4
 + Breaking change: Dropped support for older gnome-shell versions due to incompatible APIs
 + Feature: Support for "Away from desk" mode
 + Feature: Ability to change IM presence status based on pomodoro activity
++ New translation: Persian (thanks @arashm)
 + Fixed issues #38, #39, #41, #42, #45 and [more](https://github.com/codito/gnome-shell-pomodoro/issues?sort=created&direction=desc&state=closed&page=1)
 
 **Version 0.5**
@@ -107,4 +135,5 @@ Thanks to our [GitHub contributors](https://github.com/codito/gnome-shell-pomodo
 + Sound notification at end of a pomodoro break [Issue #26, Patch from @kamilprusko]
 + System wide config file support [Patch from @mgrela]
 + Support to skip breaks in case of persistent message [Patch from @amanbh]
-- Some minor bug fixes, and keybinder3 requirement is now optional
++ Some minor bug fixes, and keybinder3 requirement is now optional
+
