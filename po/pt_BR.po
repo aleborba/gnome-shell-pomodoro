@@ -245,17 +245,15 @@ msgstr[1] ""
 
 #: ../src/utils.vala:101
 #, c-format
-<<<<<<< HEAD
 msgid "You have %d minute left.\n"
 msgid_plural "You have %d minutes left.\n"
 msgstr[0] "Você tem %d minuto restante."
 msgstr[1] "Você tem %d minutos restantes."
-=======
+
 msgid "%d minute"
 msgid_plural "%d minutes"
 msgstr[0] "%d minuto"
 msgstr[1] "%d minutos"
->>>>>>> b825148988a22f7e3bdaa30545c66495e51b6210
 
 #: ../src/widgets.vala:327
 msgid "Disabled"
