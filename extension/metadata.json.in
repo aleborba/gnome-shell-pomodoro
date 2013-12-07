@@ -1,0 +1,8 @@
+{
+  "extension-id": "@PACKAGE@",
+  "uuid": "@UUID@",
+  "name": "@PACKAGE_NAME@",
+  "description": "A simple pomodoro timer",
+  "shell-version": ["3.8", "3.7.92", "3.7.91"],
+  "url": "@PACKAGE_URL@"
+}

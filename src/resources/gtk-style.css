@@ -1,0 +1,25 @@
+.toolbar .button {
+    padding: 1.0pt 4.0pt;
+}
+
+.header {
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+
+.preferences-dialog {
+}
+
+.preferences-dialog EggListBox {
+    -GtkWidget-focus-line-width: 0;
+    -GtkWidget-focus-padding: 0;
+}
+
+.preferences-dialog .list {
+    background-color: @background;
+}
+
+PomodoroSymbolicButton {
+    icon-shadow: none;
+}
+
